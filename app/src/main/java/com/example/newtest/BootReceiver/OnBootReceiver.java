@@ -4,8 +4,10 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.PowerManager;
+import android.util.Log;
 import android.widget.Toast;
 
+import androidx.work.Data;
 import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
@@ -33,7 +35,9 @@ public class OnBootReceiver extends BroadcastReceiver {
 
 
         Toast.makeText(context, "workManager From Boot!!!!", Toast.LENGTH_SHORT).show();
-        WorkManager.getInstance().cancelAllWorkByTag("BackgroundServiceLocation");
+
+
+      WorkManager.getInstance().cancelAllWorkByTag("BackgroundServiceLocation");
 
         PeriodicWorkRequest.Builder BackgroundServiceBuilder =
                 new PeriodicWorkRequest.Builder(MyWork.class, 15,

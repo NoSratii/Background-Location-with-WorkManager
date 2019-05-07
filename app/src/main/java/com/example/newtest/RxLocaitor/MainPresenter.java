@@ -21,12 +21,13 @@ public class MainPresenter {
 
     private MainView view;
 
-    public MainPresenter(RxLocation rxLocation ,int interval) {
+    public
+    MainPresenter(RxLocation rxLocation ) {
         this.rxLocation = rxLocation;
 
         this.locationRequest = LocationRequest.create()
                 .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
-                .setInterval(interval);
+                .setInterval(5000);
     }
 
     public void attachView(MainView view) {
@@ -45,32 +46,33 @@ public class MainPresenter {
                 rxLocation.settings().checkAndHandleResolution(locationRequest)
                         .flatMapObservable(this::getAddressObservable)
                         .observeOn(AndroidSchedulers.mainThread())
-                        .subscribe(view::onAddressUpdate, throwable -> Log.e("MainPresenter", "Error fetching location/address updates", throwable))
+                        .subscribe(view::onLocationUpdate, throwable -> Log.e("MainPresenter", "Error fetching location/address updates", throwable))
         );
     }
 
     @SuppressLint("MissingPermission")
-    private Observable<Address> getAddressObservable(boolean success) {
-        if(success) {
+    private Observable<Location> getAddressObservable(boolean success) {
+
             return rxLocation.location().updates(locationRequest)
                     .subscribeOn(Schedulers.io())
                     .observeOn(AndroidSchedulers.mainThread())
-                    .doOnNext(view::onLocationUpdate)
-                    .flatMap(this::getAddressFromLocation);
+                    .doOnNext(view::onLocationUpdate);
 
-        } else {
-            view.onLocationSettingsUnsuccessful();
 
-            return rxLocation.location().lastLocation()
-                    .doOnSuccess(view::onLocationUpdate)
-                    .flatMapObservable(this::getAddressFromLocation);
+//        } else {
+//            view.onLocationSettingsUnsuccessful();
+//
+//            return rxLocation.location().lastLocation()
+//                    .doOnSuccess(view::onLocationUpdate)
+//                    .flatMapObservable(this::getAddressFromLocation);
+//        }
         }
-    }
 
-    private Observable<Address> getAddressFromLocation(Location location) {
+
+/*    private Observable<Address> getAddressFromLocation(Location location) {
         return rxLocation.geocoding().fromLocation(location).toObservable()
                 .subscribeOn(Schedulers.io());
-    }
+    }*/
 
 
 }

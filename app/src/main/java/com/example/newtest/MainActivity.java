@@ -1,6 +1,8 @@
 package com.example.newtest;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
+import android.arch.lifecycle.LifecycleObserver;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -20,6 +22,7 @@ import android.util.SparseIntArray;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.PeriodicWorkRequest;
@@ -39,50 +42,36 @@ import java.text.DateFormat;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
-public class MainActivity extends AppCompatActivity implements MainView {
+public class MainActivity extends AppCompatActivity implements MainView  {
 
     private static final DateFormat DATE_FORMAT = DateFormat.getDateTimeInstance();
 
     private TextView lastUpdate;
     private TextView locationText;
     private TextView addressText;
-
-    static boolean registered;
     public SparseIntArray mErrorString;
     private RxLocation rxLocation;
     private MainPresenter presenter;
-    PeriodicWorkRequest periodicWorkRequestForegoround;
-    PeriodicWorkRequest periodicWorkRequestBackground;
     public static final int MY_PERMISSIONS_REQUEST_LOCATION = 99;
 
 
-    private final String GETTAG = MainView.class.getSimpleName();
-
-    IntentFilter intentFilter = new IntentFilter("LocationChanged");
-    BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            double locLat = intent.getExtras().getDouble("lat");
-            double locLong = intent.getExtras().getDouble("long");
-            Log.e(GETTAG, "back lat:  " + locLat + "  back long:  " + locLong);
-        }
-    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        checkLocationPermission();
-
         lastUpdate = findViewById(R.id.tv_last_update);
         locationText = findViewById(R.id.tv_current_location);
         addressText = findViewById(R.id.tv_current_address);
         mErrorString = new SparseIntArray();
-        rxLocation = new RxLocation(this);
-        rxLocation.setDefaultTimeout(15, TimeUnit.SECONDS);
 
-        presenter = new MainPresenter(rxLocation, 5000);
+
+        rxLocation = new RxLocation(this);
+        rxLocation.setDefaultTimeout(3, TimeUnit.SECONDS);
+        presenter = new MainPresenter(rxLocation);
+
+       checkLocationPermission();
     }
 
     private boolean checkLocationPermission() {
@@ -91,13 +80,9 @@ public class MainActivity extends AppCompatActivity implements MainView {
                 Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
 
-            // Should we show an explanation?
             if (ActivityCompat.shouldShowRequestPermissionRationale(this,
                     Manifest.permission.ACCESS_FINE_LOCATION)) {
 
-                // Show an explanation to the user *asynchronously* -- don't block
-                // this thread waiting for the user's response! After the user
-                // sees the explanation, try again to request the permission.
                 new AlertDialog.Builder(this)
                         .setTitle("Permission")
                         .setMessage("Turn On Location")
@@ -148,11 +133,10 @@ public class MainActivity extends AppCompatActivity implements MainView {
 
                 } else {
 
-                    // permission denied, boo! Disable the
-                    // functionality that depends on this permission.
+
 
                 }
-                return;
+
             }
         }
     }
@@ -162,10 +146,12 @@ public class MainActivity extends AppCompatActivity implements MainView {
     @Override
     protected void onStart() {
         super.onStart();
-        WorkManager.getInstance().cancelAllWorkByTag("BackgroundServiceLocation");
-        checkPlayServicesAvailable();
-       presenter.attachView(this);
 
+        WorkManager.getInstance().cancelAllWorkByTag("BackgroundServiceLocation");
+        if (checkLocationPermission()){
+            checkPlayServicesAvailable();
+            presenter.attachView(this);
+        }
 
 
     }
@@ -174,8 +160,8 @@ public class MainActivity extends AppCompatActivity implements MainView {
     protected void onResume() {
         super.onResume();
 
-/*        WorkManager.getInstance().cancelAllWorkByTag("BackgroundServiceLocation");
-        checkPlayServicesAvailable();*/
+       WorkManager.getInstance().cancelAllWorkByTag("BackgroundServiceLocation");
+        checkPlayServicesAvailable();
     }
 
     private void checkPlayServicesAvailable() {
@@ -197,7 +183,7 @@ public class MainActivity extends AppCompatActivity implements MainView {
        presenter.detachView();
 
 
-        PeriodicWorkRequest.Builder BackgroundServiceBuilder =
+/*        PeriodicWorkRequest.Builder BackgroundServiceBuilder =
                 new PeriodicWorkRequest.Builder(MyWork.class, 15,
                         TimeUnit.MINUTES)
                         .addTag("BackgroundServiceLocation");
@@ -205,7 +191,7 @@ public class MainActivity extends AppCompatActivity implements MainView {
         PeriodicWorkRequest  BackgroundService = BackgroundServiceBuilder.build();
         WorkManager.getInstance().enqueueUniquePeriodicWork("BackgroundServiceLocationJob",
                 ExistingPeriodicWorkPolicy.REPLACE,
-                BackgroundService);
+                BackgroundService);*/
 
 /*
 
@@ -229,33 +215,8 @@ public class MainActivity extends AppCompatActivity implements MainView {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-//        MyApplication.getRefWatcher().watch(presenter);
+        MyApplication.getRefWatcher().watch(presenter);
     }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if(item.getItemId() == R.id.menu_licenses) {
-            new LibsBuilder()
-                    .withFields(Libs.toStringArray(R.string.class.getFields()))
-                    .withActivityStyle(Libs.ActivityStyle.LIGHT_DARK_TOOLBAR)
-                    .withActivityTitle("Open Source Licenses")
-                    .withLicenseShown(true)
-                    .start(this);
-
-            return true;
-        }
-
-        return false;
-    }
-
-    // View Interface
-
 
 
     private String getAddressText(Address address) {
@@ -270,17 +231,19 @@ public class MainActivity extends AppCompatActivity implements MainView {
         return addressText;
     }
 
+    @SuppressLint("SetTextI18n")
     @Override
     public void onLocationUpdate(Location location) {
 
-        lastUpdate.setText(DATE_FORMAT.format(new Date()));
+
         locationText.setText(location.getLatitude() + ", " + location.getLongitude());
+        lastUpdate.setText(DATE_FORMAT.format(new Date()));
     }
 
     @Override
     public void onAddressUpdate(Address address) {
 
-        addressText.setText(getAddressText(address));
+//      addressText.setText(getAddressText(address));
     }
 
     @Override

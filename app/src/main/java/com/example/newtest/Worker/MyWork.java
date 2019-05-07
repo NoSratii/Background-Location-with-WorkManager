@@ -57,15 +57,10 @@ public class MyWork extends Worker implements MainView {
 
         locationManager = (LocationManager) getApplicationContext().getSystemService(LOCATION_SERVICE);
         isGpsEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
-        
 
-            
-            int         interval        = getInputData().getInt("interval",150000);
-            boolean     isBackground    = getInputData().getBoolean("isBackground",false);
-            Log.e(LOGTAG, "work started" + isBackground);
             rxLocation = new RxLocation(getApplicationContext());
-            rxLocation.setDefaultTimeout(15, TimeUnit.SECONDS);
-            presenter = new MainPresenter(rxLocation,interval);
+            rxLocation.setDefaultTimeout(3, TimeUnit.SECONDS);
+            presenter = new MainPresenter(rxLocation);
             presenter.attachView(MyWork.this);
 
 
@@ -74,10 +69,6 @@ public class MyWork extends Worker implements MainView {
         return Result.success();
     }
 
-    private boolean hasPermissions() {
-        return (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED);
-    }
 
     private void displayNotification(String title, String task) {
         
@@ -103,16 +94,12 @@ public class MyWork extends Worker implements MainView {
     public void onLocationUpdate(Location location) {
 
         if (location!= null){
-            displayNotification("My Worker", "Hey I Start my work");
-            Log.e("LOC","Current location ::::::::::"+location.getLatitude()+".."+location.getLongitude());
+            displayNotification("My Worker ", ""+location.getLatitude()+","+location.getLongitude());
+
+
+            presenter.detachView();
         }
 
-
-        Intent intent = new Intent("LocationChanged");
-        intent.putExtra("lat", location.getLatitude());
-        intent.putExtra("long", location.getLongitude());
-        getApplicationContext().sendBroadcast(intent);
-        presenter.detachView();
 
     }
 
